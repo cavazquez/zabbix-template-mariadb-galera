@@ -1,5 +1,9 @@
 # 📊 zabbix-template-mariadb-galera
 
+[![CI](https://github.com/cavazquez/zabbix-template-mariadb-galera/actions/workflows/validate.yml/badge.svg)](https://github.com/cavazquez/zabbix-template-mariadb-galera/actions/workflows/validate.yml)
+[![Zabbix 6.0+](https://img.shields.io/badge/Zabbix-6.0%2B-CC2936?logo=zabbix&logoColor=white)](https://www.zabbix.com/documentation/6.0/en/manual/installation/upgrade_notes_600)
+[![Zabbix agent 2](https://img.shields.io/badge/Zabbix_agent-2-CC2936?logo=zabbix&logoColor=white)](https://www.zabbix.com/documentation/6.0/en/manual/appendix/config/zabbix_agent2)
+
 Plantilla **Zabbix 6.0+** para supervisar **MariaDB Galera Cluster** (`wsrep_*`) con **Zabbix agent 2** y el **plugin MySQL** oficial. No se usan scripts en el nodo ni `UserParameter`: las métricas salen de `mysql.get_status_variables` (equivalente a `SHOW GLOBAL STATUS`) y de ítems dependientes con **JSONPath**, igual que en la plantilla *MySQL by Zabbix agent 2*.
 
 No incluye datos de ningún servidor concreto: rutas, puertos y usuarios en la documentación o en `mysql.conf.example` son **solo ejemplos**; debes sustituirlos por los de tu entorno (sobre todo `{$MYSQL.DSN}` en cada host).
@@ -94,7 +98,9 @@ Puedes enlazar además la plantilla oficial **MySQL by Zabbix agent 2** si quier
 
 ## 🤖 CI (GitHub Actions)
 
-En cada *push* o *pull request* a `main`, el workflow [`.github/workflows/validate.yml`](.github/workflows/validate.yml) comprueba que la plantilla YAML sea sintácticamente válida (PyYAML).
+La primera insignia del encabezado muestra el **estado del último workflow** [`validate.yml`](.github/workflows/validate.yml) en la rama por defecto (pasa / falla según GitHub).
+
+En cada *push* o *pull request* a `main`, ese workflow comprueba que la plantilla YAML sea sintácticamente válida (PyYAML).
 
 ## 📄 Licencia
 
