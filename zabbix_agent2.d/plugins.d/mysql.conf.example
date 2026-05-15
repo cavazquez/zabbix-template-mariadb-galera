@@ -1,0 +1,30 @@
+# Copiar a plugins.d/mysql.conf (ruta según paquete; suele incluirse desde zabbix_agent2.conf).
+# Árbol del repo: ver ../README.txt
+# Todo lo siguiente son EJEMPLOS genéricos (usuario, contraseña, rutas, nombres de sesión): adáptalos a tu entorno.
+#
+# === Bare metal / VM (socket local) ===
+# Plugins.Mysql.Sessions.GaleraLocal.Uri=unix:/run/mysqld/mysqld.sock
+# Plugins.Mysql.Sessions.GaleraLocal.User=zbx_monitor
+# Plugins.Mysql.Sessions.GaleraLocal.Password=cambiar
+#
+# Plantilla Zabbix: {$MYSQL.DSN}=GaleraLocal y macros USER/PASSWORD vacías.
+#
+# === Docker: MariaDB/Galera expuesto por puerto en el host ===
+# Si publicas 3306 (o 3307, etc.), el agente en el MISMO host conecta por TCP al loopback:
+# Plugins.Mysql.Sessions.GaleraDocker.Uri=tcp://127.0.0.1:3306
+# Plugins.Mysql.Sessions.GaleraDocker.User=zbx_monitor
+# Plugins.Mysql.Sessions.GaleraDocker.Password=cambiar
+#
+# Varios nodos Galera en el mismo host: un puerto publicado distinto por contenedor
+# (p. ej. 33061, 33062, 33063) y una sesión por nodo o macros {$MYSQL.DSN} distintas por host Zabbix.
+#
+# === Docker: agente 2 en la misma red de compose/stack que Galera ===
+# Usa el nombre DNS del servicio y el puerto INTERNO del contenedor (suele ser 3306):
+# Plugins.Mysql.Sessions.GaleraDocker.Uri=tcp://galera_node1:3306
+#
+# El usuario MySQL debe permitir el origen de la conexión (p. ej. 'zbx_monitor'@'%' o subred Docker).
+
+# === Una sola instancia por máquina (Default) ===
+# Plugins.Mysql.Default.Uri=unix:/run/mysqld/mysqld.sock
+# Plugins.Mysql.Default.User=zbx_monitor
+# Plugins.Mysql.Default.Password=cambiar

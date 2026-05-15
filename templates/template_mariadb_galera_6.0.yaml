@@ -1,0 +1,282 @@
+zabbix_export:
+  version: '6.0'
+  date: '2026-05-15T20:00:00Z'
+  groups:
+    - uuid: b9bfd4a06d8d478fa5dfe1c50d3dc3e7
+      name: Templates/Databases
+  templates:
+    - uuid: 0e774cff38c74016890f2edf11c27432
+      template: TemplateMariaDBGaleraAgent2
+      name: 'MariaDB Galera (Zabbix agent 2)'
+      description: |
+        Métricas Galera (`wsrep_*`) usando el **plugin MySQL integrado en Zabbix agent 2**.
+
+        Un ítem maestro ejecuta `mysql.get_status_variables` (equivalente a `SHOW GLOBAL STATUS`); el resto son ítems **dependientes** con JSONPath (mismo patrón que la plantilla oficial «MySQL by Zabbix agent 2»).
+
+        En cada host: instalar **zabbix-agent2**, definir macros `{$MYSQL.DSN}`, `{$MYSQL.USER}` y `{$MYSQL.PASSWORD}` (o usar una **sesión nombrada** en `Plugins.Mysql.Sessions.*` del agente y poner el nombre de sesión en `{$MYSQL.DSN}`, dejando usuario y contraseña vacíos).
+
+        **Galera en Docker:** suele usarse `tcp://127.0.0.1:<puerto_publicado>` (agente en el host) o `tcp://<servicio_compose>:3306` (agente en la misma red de contenedores). Ver README.
+
+        Los disparadores van **anidados bajo los ítems** (formato de exportación Zabbix 6.x). No se incluye gráfico en el YAML para maximizar compatibilidad de importación; puedes crear uno clásico en la plantilla con los ítems `galera.wsrep_flow_control_paused`, `galera.wsrep_local_recv_queue` y `galera.wsrep_local_recv_queue_avg`.
+
+        Documentación del plugin: https://www.zabbix.com/documentation/current/en/manual/appendix/config/zabbix_agent2_plugins/mysql_plugin
+      groups:
+        - name: Templates/Databases
+      items:
+        - uuid: eb25b81cbf944ccf9f27d95d58d11ee1
+          name: 'Galera: global status JSON (master)'
+          type: ZABBIX_PASSIVE
+          key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          delay: 1m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: 'JSON con todas las variables de estado; los ítems dependientes extraen cada `wsrep_*`.'
+          tags:
+            - tag: component
+              value: galera
+        - uuid: e39578d6d21e4f2ebcf4f30f7597f7eb
+          name: 'Galera: ping MySQL'
+          type: ZABBIX_PASSIVE
+          key: 'mysql.ping["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          delay: 1m
+          history: 30d
+          trends: '0'
+          value_type: UNSIGNED
+          description: '1 si la conexión al servidor MySQL/MariaDB funciona; 0 si falla.'
+          tags:
+            - tag: component
+              value: galera
+          triggers:
+            - uuid: 596cf76adc164e7788f96e46746e90f2
+              expression: 'last(/TemplateMariaDBGaleraAgent2/mysql.ping["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"])=0'
+              name: 'Galera: sin conexión MySQL (ping = 0)'
+              priority: HIGH
+              description: 'El plugin MySQL del agente 2 no puede conectar con la instancia configurada.'
+        - uuid: ae797dc92462410781469f06f55a6849
+          name: 'Galera: estado del clúster (wsrep_cluster_status)'
+          type: DEPENDENT
+          key: galera.wsrep_cluster_status
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_cluster_status
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+          triggers:
+            - uuid: 05343c5b459e418d90b02613fe6c3710
+              expression: 'find(/TemplateMariaDBGaleraAgent2/galera.wsrep_cluster_status,,"regexp","(?i)^primary$")=0'
+              name: 'Galera: el nodo no está en partición Primary'
+              priority: HIGH
+              dependencies:
+                - name: 'Galera: sin conexión MySQL (ping = 0)'
+                  expression: 'last(/TemplateMariaDBGaleraAgent2/mysql.ping["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"])=0'
+              description: 'Posible partición o pérdida de quorum.'
+        - uuid: 812414d79ff842f982bdf965f33ff9f8
+          name: 'Galera: tamaño del clúster (wsrep_cluster_size)'
+          type: DEPENDENT
+          key: galera.wsrep_cluster_size
+          delay: '0'
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_cluster_size
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+        - uuid: ca93c782b0a3405dbfd64963d3680a17
+          name: 'Galera: UUID de estado del clúster (wsrep_cluster_state_uuid)'
+          type: DEPENDENT
+          key: galera.wsrep_cluster_state_uuid
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_cluster_state_uuid
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          description: 'Comparar entre nodos para detectar particiones.'
+          tags:
+            - tag: component
+              value: galera
+        - uuid: 2cc6ea9eea36477ab0b94cd7f419fb2f
+          name: 'Galera: conectado al clúster (wsrep_connected)'
+          type: DEPENDENT
+          key: galera.wsrep_connected
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_connected
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+          triggers:
+            - uuid: 1417c783b2c64f488baf8fd03c333ab2
+              expression: 'find(/TemplateMariaDBGaleraAgent2/galera.wsrep_connected,,"regexp","(?i)^on$")=0'
+              name: 'Galera: wsrep_connected distinto de ON'
+              priority: HIGH
+              dependencies:
+                - name: 'Galera: sin conexión MySQL (ping = 0)'
+                  expression: 'last(/TemplateMariaDBGaleraAgent2/mysql.ping["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"])=0'
+        - uuid: 54d67973c3ed4cf496da77a34c52691d
+          name: 'Galera: listo para consultas (wsrep_ready)'
+          type: DEPENDENT
+          key: galera.wsrep_ready
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_ready
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+          triggers:
+            - uuid: 9c9b40cf112d48dba37b9153b39e663e
+              expression: 'find(/TemplateMariaDBGaleraAgent2/galera.wsrep_ready,,"regexp","(?i)^on$")=0'
+              name: 'Galera: wsrep_ready distinto de ON'
+              priority: HIGH
+              dependencies:
+                - name: 'Galera: sin conexión MySQL (ping = 0)'
+                  expression: 'last(/TemplateMariaDBGaleraAgent2/mysql.ping["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"])=0'
+        - uuid: 91df3591d33f4479acaf44b24187b816
+          name: 'Galera: comentario de estado local (wsrep_local_state_comment)'
+          type: DEPENDENT
+          key: galera.wsrep_local_state_comment
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_local_state_comment
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+        - uuid: 227e8c2c63484293b35e606f8b38a904
+          name: 'Galera: tiempo en flow control (wsrep_flow_control_paused)'
+          type: DEPENDENT
+          key: galera.wsrep_flow_control_paused
+          delay: '0'
+          history: 30d
+          trends: 365d
+          value_type: FLOAT
+          units: ratio
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_flow_control_paused
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+          triggers:
+            - uuid: b990ebf63d5149f98b4c89ee601d794b
+              expression: 'min(/TemplateMariaDBGaleraAgent2/galera.wsrep_flow_control_paused,5m)>{$GALERA.FLOW_CONTROL.MAX}'
+              name: 'Galera: flow control alto'
+              priority: WARNING
+              dependencies:
+                - name: 'Galera: sin conexión MySQL (ping = 0)'
+                  expression: 'last(/TemplateMariaDBGaleraAgent2/mysql.ping["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"])=0'
+        - uuid: b55bfd8c6c0241638b00d83802e95640
+          name: 'Galera: cola de recepción local (wsrep_local_recv_queue)'
+          type: DEPENDENT
+          key: galera.wsrep_local_recv_queue
+          delay: '0'
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_local_recv_queue
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+          triggers:
+            - uuid: 9ef49f76ce654dbca0ecf6e120868641
+              expression: 'min(/TemplateMariaDBGaleraAgent2/galera.wsrep_local_recv_queue,5m)>{$GALERA.RECV_QUEUE.MAX}'
+              name: 'Galera: cola de recepción local muy alta'
+              priority: WARNING
+              dependencies:
+                - name: 'Galera: sin conexión MySQL (ping = 0)'
+                  expression: 'last(/TemplateMariaDBGaleraAgent2/mysql.ping["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"])=0'
+        - uuid: a5a0ae0d81d04576ab0dc9ab9544b5c3
+          name: 'Galera: cola de recepción media (wsrep_local_recv_queue_avg)'
+          type: DEPENDENT
+          key: galera.wsrep_local_recv_queue_avg
+          delay: '0'
+          history: 30d
+          trends: 365d
+          value_type: FLOAT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_local_recv_queue_avg
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+        - uuid: 22ed7d3180be4d08a72b85211988bea1
+          name: 'Galera: distancia de certificación (wsrep_cert_deps_distance)'
+          type: DEPENDENT
+          key: galera.wsrep_cert_deps_distance
+          delay: '0'
+          history: 30d
+          trends: 365d
+          value_type: FLOAT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.wsrep_cert_deps_distance
+          master_item:
+            key: 'mysql.get_status_variables["{$MYSQL.DSN}","{$MYSQL.USER}","{$MYSQL.PASSWORD}"]'
+          tags:
+            - tag: component
+              value: galera
+      macros:
+        - macro: '{$MYSQL.DSN}'
+          value: ' '
+          description: 'Definir en cada host: URI (tcp://host:3306, unix:/ruta/sock) o nombre de sesión Plugins.Mysql.Sessions.*. Ejemplos habituales: unix:/run/mysqld/mysqld.sock, tcp://127.0.0.1:3306.'
+        - macro: '{$MYSQL.USER}'
+          description: 'Usuario de monitorización. Vacío si usas solo sesión nombrada en el agente.'
+        - macro: '{$MYSQL.PASSWORD}'
+          description: 'Contraseña. Vacío si usas solo sesión nombrada en el agente.'
+        - macro: '{$GALERA.FLOW_CONTROL.MAX}'
+          value: '0.1'
+          description: 'Umbral máximo de wsrep_flow_control_paused (ratio 0–1) en ventana de 5 minutos.'
+        - macro: '{$GALERA.RECV_QUEUE.MAX}'
+          value: '5000'
+          description: 'Umbral de wsrep_local_recv_queue en ventana de 5 minutos.'
