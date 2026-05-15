@@ -1,10 +1,10 @@
-# zabbix-template-mariadb-galera
+# 📊 zabbix-template-mariadb-galera
 
 Plantilla **Zabbix 6.0+** para supervisar **MariaDB Galera Cluster** (`wsrep_*`) con **Zabbix agent 2** y el **plugin MySQL** oficial. No se usan scripts en el nodo ni `UserParameter`: las métricas salen de `mysql.get_status_variables` (equivalente a `SHOW GLOBAL STATUS`) y de ítems dependientes con **JSONPath**, igual que en la plantilla *MySQL by Zabbix agent 2*.
 
 No incluye datos de ningún servidor concreto: rutas, puertos y usuarios en la documentación o en `mysql.conf.example` son **solo ejemplos**; debes sustituirlos por los de tu entorno (sobre todo `{$MYSQL.DSN}` en cada host).
 
-## Qué incluye el repositorio
+## 📦 Qué incluye el repositorio
 
 | Ruta | Descripción |
 |------|-------------|
@@ -12,20 +12,20 @@ No incluye datos de ningún servidor concreto: rutas, puertos y usuarios en la d
 | `zabbix_agent2.d/plugins.d/mysql.conf.example` | Ejemplos de `Plugins.Mysql.Sessions.*` / `Default.*` (socket, TCP, Docker). |
 | `zabbix_agent2.d/README.txt` | Nota breve sobre la carpeta `zabbix_agent2.d/` del repo frente a `/etc/zabbix/` en el servidor. |
 
-## Requisitos
+## ✅ Requisitos
 
 - **Zabbix server 6.0 o superior** (import YAML y claves del plugin agent 2).
 - En cada nodo a vigilar: **zabbix-agent2** instalado y accesible desde el servidor o proxy Zabbix.
 - Usuario de solo lectura en MariaDB con permisos acordes al [README del plugin MySQL](https://raw.githubusercontent.com/zabbix/zabbix/master/src/go/plugins/mysql/README.md) (habitualmente `REPLICATION CLIENT`, `PROCESS`, `SHOW DATABASES`, `SHOW VIEW`).
 - Instancia **Galera** (las variables `wsrep_*` deben existir en el estado global).
 
-## Flujo de trabajo recomendado
+## 🔄 Flujo de trabajo recomendado
 
 1. **MariaDB**: crea el usuario de monitorización (p. ej. `zbx_monitor`) y comprueba con el cliente `mysql` que puedes leer `SHOW GLOBAL STATUS LIKE 'wsrep%'` desde el mismo sitio donde correrá el agente 2.
 2. **Agente 2**: configura conexión por **macros en el host** Zabbix (opción A) o por **sesión nombrada** en `mysql.conf` del plugin (opción B). Reinicia `zabbix-agent2`.
 3. **Zabbix**: importa la plantilla, enlázala a un host por nodo Galera y ajusta las macros del host.
 
-## Configuración del agente 2
+## ⚙️ Configuración del agente 2
 
 Documentación del fabricante: [MySQL plugin (Zabbix agent 2)](https://www.zabbix.com/documentation/current/en/manual/appendix/config/zabbix_agent2_plugins/mysql_plugin).
 
@@ -57,7 +57,7 @@ sudo zabbix_agent2 -c /etc/zabbix/zabbix_agent2.conf -v -t 'mysql.ping["tcp://12
 
 (Ajusta `-c`, DSN, usuario y contraseña; si usas sesión nombrada, la clave puede ser `mysql.ping["MiSesion","",""]`.)
 
-## Galera en Docker
+## 🐳 Galera en Docker
 
 El plugin solo necesita un **DSN alcanzable**; en contenedores suele usarse **TCP**.
 
@@ -66,7 +66,7 @@ El plugin solo necesita un **DSN alcanzable**; en contenedores suele usarse **TC
 
 Más ejemplos comentados en `zabbix_agent2.d/plugins.d/mysql.conf.example`.
 
-## Zabbix: importar plantilla y enlazar
+## 📥 Zabbix: importar plantilla y enlazar
 
 1. **Datos → Plantillas → Importar** el fichero `templates/template_mariadb_galera_6.0.yaml`.
 2. Asocia la plantilla **MariaDB Galera (Zabbix agent 2)** al host de cada nodo.
@@ -80,7 +80,7 @@ Más ejemplos comentados en `zabbix_agent2.d/plugins.d/mysql.conf.example`.
 
 Si un ítem `wsrep_*` queda no soportado, comprueba que el servidor sea realmente Galera y que el nombre en el JSON coincida con el JSONPath (`$.wsrep_cluster_status`, etc., según mayúsculas/minúsculas de tu versión).
 
-## Métricas y disparadores (resumen)
+## 📈 Métricas y disparadores (resumen)
 
 - **Estado:** `wsrep_cluster_status`, `wsrep_cluster_size`, `wsrep_cluster_state_uuid`, `wsrep_connected`, `wsrep_ready`, `wsrep_local_state_comment`.
 - **Presión:** `wsrep_flow_control_paused`, `wsrep_local_recv_queue`, `wsrep_local_recv_queue_avg`, `wsrep_cert_deps_distance`.
@@ -88,10 +88,14 @@ Si un ítem `wsrep_*` queda no soportado, comprueba que el servidor sea realment
 
 Para **particiones** o **split-brain** suele compararse `wsrep_cluster_state_uuid` entre nodos en el mismo instante; eso queda fuera de esta plantilla (haría falta correlación manual u otra automatización).
 
-## Plantilla oficial MySQL (opcional)
+## 🔗 Plantilla oficial MySQL (opcional)
 
 Puedes enlazar además la plantilla oficial **MySQL by Zabbix agent 2** si quieres métricas generales de instancia; revisa duplicados de ítems maestros o intervalos para no sobrecargar MariaDB.
 
-## Licencia
+## 🤖 CI (GitHub Actions)
 
-Ver el fichero `LICENSE` del repositorio.
+En cada *push* o *pull request* a `main`, el workflow [`.github/workflows/validate.yml`](.github/workflows/validate.yml) comprueba que la plantilla YAML sea sintácticamente válida (PyYAML).
+
+## 📄 Licencia
+
+Este proyecto se publica bajo la [**Apache License, versión 2.0**](https://www.apache.org/licenses/LICENSE-2.0). El texto legal completo está en el fichero [`LICENSE`](LICENSE) del repositorio (SPDX: `Apache-2.0`).

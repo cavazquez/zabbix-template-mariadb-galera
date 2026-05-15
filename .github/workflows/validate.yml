@@ -1,0 +1,24 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  template-yaml:
+    name: Plantilla YAML (sintaxis)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar PyYAML
+        run: pip install --disable-pip-version-check pyyaml
+
+      - name: Comprobar templates/template_mariadb_galera_6.0.yaml
+        run: python3 -c "import yaml; yaml.safe_load(open('templates/template_mariadb_galera_6.0.yaml'))"
